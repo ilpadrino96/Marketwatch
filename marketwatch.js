@@ -1,141 +1,206 @@
-(function(){
-  if(document.getElementById('res-threshold-ui')) return;
+(() => {
+  if (window.premiumMarketMonitor) return;
+  window.premiumMarketMonitor = true;
 
-  // Pushover settings
   const pushoverUserKey = 'uet9xuivey6rrfbga3uzt4s369yds6';
   const pushoverApiToken = 'acuz192hbhu6wvg41scxtecyvw8kp3';
 
-  function sendPushoverNotification(message) {
-    fetch('https://api.pushover.net/1/messages.json', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-      body: new URLSearchParams({
-        token: pushoverApiToken,
-        user: pushoverUserKey,
-        message: message
-      })
-    }).catch(error => console.error('Pushover error:', error));
-  }
-
+  // UI container with dark style
   const container = document.createElement('div');
-  container.id = 'res-threshold-ui';
-  container.style = `
-    position: fixed; bottom: 20px; right: 20px; 
-    background: rgba(0,0,0,0.85); color: white; 
-    padding: 15px; border-radius: 8px; font-family: Arial, sans-serif; 
-    font-size: 14px; z-index: 999999; width: 240px;
-    box-shadow: 0 0 10px #000;
-  `;
+  container.style.position = 'fixed';
+  container.style.bottom = '10px';
+  container.style.right = '10px';
+  container.style.backgroundColor = '#121212';
+  container.style.border = '2px solid #444';
+  container.style.borderRadius = '8px';
+  container.style.padding = '15px';
+  container.style.zIndex = 999999;
+  container.style.width = '300px';
+  container.style.fontFamily = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
+  container.style.fontSize = '14px';
+  container.style.color = '#eee';
+  container.style.boxShadow = '0 0 10px #666';
 
   container.innerHTML = `
-    <div style="margin-bottom: 10px; font-weight: bold; font-size: 16px;">Set Thresholds</div>
-    <label>Wood: <input type="number" id="th-wood" value="300" style="width:60px;"></label><br><br>
-    <label>Stone: <input type="number" id="th-stone" value="300" style="width:60px;"></label><br><br>
-    <label>Iron: <input type="number" id="th-iron" value="300" style="width:60px;"></label><br><br>
-    <label>Chime:
-      <select id="chime-select" style="width: 100%;">
+    <div style="font-weight:bold; font-size:18px; margin-bottom:10px; text-align:center; color:#aaf;">Premium Market Monitor</div>
+    <label>Wood threshold: <input id="pm_wood" type="number" value="300" style="width:60px; background:#222; color:#eee; border:1px solid #444; border-radius:3px;"/></label><br/><br/>
+    <label>Clay threshold: <input id="pm_stone" type="number" value="300" style="width:60px; background:#222; color:#eee; border:1px solid #444; border-radius:3px;"/></label><br/><br/>
+    <label>Iron threshold: <input id="pm_iron" type="number" value="300" style="width:60px; background:#222; color:#eee; border:1px solid #444; border-radius:3px;"/></label><br/><br/>
+    <label>Chime: 
+      <select id="pm_chime" style="width:100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:#222; color:#eee; border:1px solid #444; border-radius:3px;">
         <option value="beep">Beep (triangle)</option>
         <option value="buzz">Buzz (square)</option>
         <option value="bell">Bell (sine)</option>
       </select>
-    </label><br><br>
-    <button id="th-start-btn" style="width:100%; padding: 6px; cursor:pointer; font-weight:bold;">Start Monitor</button>
-    <button id="th-close-btn" style="width:100%; padding: 6px; margin-top:5px; cursor:pointer; font-size:12px; background:#333; border:none; color:#ccc;">Close</button>
-    <div id="th-msg" style="margin-top:8px; font-size:12px; color:#f66;"></div>
+    </label><br/><br/>
+    <button id="pm_start" style="width:100%; padding:6px; font-weight:bold; cursor:pointer; background:#334455; color:#aaf; border:none; border-radius:4px;">Start Monitor</button><br/><br/>
+    <button id="pm_stop" style="width:100%; padding:6px; font-weight:bold; cursor:pointer; background:#663333; color:#faa; border:none; border-radius:4px;">Stop Monitor</button><br/><br/>
+    <button id="pm_toggle_logs" style="width:100%; padding:6px; font-weight:bold; cursor:pointer; background:#444; color:#ccc; border:none; border-radius:4px;">Show Logs</button>
+    <div id="pm_logs" style="margin-top:10px; max-height:150px; overflow-y:auto; background:#222; border:1px solid #444; border-radius:5px; padding:5px; font-family: monospace; font-size:12px; display:none; color:#ddd;"></div>
   `;
 
   document.body.appendChild(container);
 
-  function playChime(type){
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
+  // Create and insert Export CSV button
+  const exportCsvBtn = document.createElement('button');
+  exportCsvBtn.textContent = 'Export as CSV';
+  exportCsvBtn.style.cssText = 'width:100%; padding:6px; font-weight:bold; cursor:pointer; background:#226688; color:#cceeff; border:none; border-radius:4px; margin-top:5px;';
+  container.appendChild(exportCsvBtn);
 
-    o.type = type === 'buzz' ? 'square' : type === 'bell' ? 'sine' : 'triangle';
-    o.frequency.setValueAtTime(880, ctx.currentTime);
-    g.gain.setValueAtTime(0.1, ctx.currentTime);
+  // Elements references
+  const woodInput = container.querySelector('#pm_wood');
+  const stoneInput = container.querySelector('#pm_stone');
+  const ironInput = container.querySelector('#pm_iron');
+  const chimeSelect = container.querySelector('#pm_chime');
+  const startBtn = container.querySelector('#pm_start');
+  const stopBtn = container.querySelector('#pm_stop');
+  const toggleLogsBtn = container.querySelector('#pm_toggle_logs');
+  const logsDiv = container.querySelector('#pm_logs');
 
-    o.connect(g);
-    g.connect(ctx.destination);
-    o.start();
-    o.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.3);
-    o.stop(ctx.currentTime + 0.4);
-  }
-
-  function notify(msg){
-    if(typeof UI !== 'undefined' && UI.ConfirmationBox){
-      UI.ConfirmationBox(msg, []);
-    } else {
-      alert(msg);
+  // Pushover notification
+  async function sendPushover(msg) {
+    try {
+      await fetch('https://api.pushover.net/1/messages.json', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          token: pushoverApiToken,
+          user: pushoverUserKey,
+          message: msg,
+          title: 'Premium Market Alert'
+        })
+      });
+      addLog('Pushover sent: ' + msg);
+    } catch (err) {
+      addLog('Pushover error: ' + err.message);
     }
   }
 
-  function getResourceValue(res, idMap){
-    const td = document.getElementById(idMap[res]);
-    if(!td) return null;
-    const div = td.querySelector('.premium-exchange-sep');
-    if(!div) return null;
-    const text = div.textContent || '';
-    const val = parseInt(text.replace(/\D/g, ''));
+  function playChime(type) {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    osc.type = type === 'buzz' ? 'square' : (type === 'bell' ? 'sine' : 'triangle');
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
+    osc.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    osc.start();
+    osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.3);
+    osc.stop(ctx.currentTime + 0.4);
+  }
+
+  function formatDateTime(date) {
+    return date.toLocaleDateString('en-GB') + ' ' + date.toTimeString().split(' ')[0];
+  }
+
+  function addLog(text) {
+    const ts = formatDateTime(new Date());
+    logsDiv.innerHTML += `[${ts}] ${text}<br>`;
+    logsDiv.scrollTop = logsDiv.scrollHeight;
+  }
+
+  function getRate(resource) {
+    const id = 'premium_exchange_rate_' + resource;
+    const td = document.getElementById(id);
+    if (!td) return null;
+    const divs = td.getElementsByClassName('premium-exchange-sep');
+    if (divs.length === 0) return null;
+    const text = divs[0].textContent.trim();
+    const val = parseInt(text.replace(/\D/g, ''), 10);
     return isNaN(val) ? null : val;
   }
 
-  let monitorActive = false;
-  let timeoutId = null;
+  let monitorInterval = null;
+  let lastRate = { wood: null, stone: null, iron: null };
+  let notifiedFlag = { wood: false, stone: false, iron: false };
 
-  function check(thresholds, idMap, chimeType){
-    if(!monitorActive) return;
-    const resSpans = [];
-    const pushoverLines = [];
+  function monitor() {
+    ['wood', 'stone', 'iron'].forEach(res => {
+      const threshold = parseInt(container.querySelector(`#pm_${res}`).value, 10);
+      if (isNaN(threshold)) return;
+      const rate = getRate(res);
+      if (rate === null) return;
 
-    for(const r in thresholds){
-      const val = getResourceValue(r, idMap);
-      if(val !== null && val <= thresholds[r]){
-        resSpans.push(`<span style="padding:0 10px 0 18px" class="res source ${r}">${val}</span>`);
-        pushoverLines.push(`${r}: ${val}`);
+      if (lastRate[res] !== rate) {
+        addLog(`${res.toUpperCase()} rate changed: ${lastRate[res]} → ${rate}`);
+        lastRate[res] = rate;
+      }
+
+      if (rate <= threshold) {
+        if (!notifiedFlag[res]) {
+          playChime(chimeSelect.value);
+          sendPushover(`⚠️ ${res.charAt(0).toUpperCase() + res.slice(1)} rate low: ${rate}`);
+          addLog(`Alert sent for ${res.toUpperCase()} (threshold: ${threshold}, current: ${rate})`);
+          notifiedFlag[res] = true;
+        }
+      } else {
+        if (notifiedFlag[res]) {
+          addLog(`${res.toUpperCase()} rate went above threshold (${threshold}). Reset alert flag.`);
+          notifiedFlag[res] = false;
+        }
+      }
+    });
+  }
+
+  startBtn.onclick = () => {
+    if (monitorInterval) {
+      addLog('Monitor already running.');
+      return;
+    }
+    addLog('Monitor started.');
+    monitor();
+    monitorInterval = setInterval(monitor, 2500);
+  };
+
+  stopBtn.onclick = () => {
+    if (monitorInterval) {
+      clearInterval(monitorInterval);
+      monitorInterval = null;
+      addLog('Monitor stopped.');
+    } else {
+      addLog('Monitor was not running.');
+    }
+  };
+
+  toggleLogsBtn.onclick = () => {
+    if (logsDiv.style.display === 'none' || !logsDiv.style.display) {
+      logsDiv.style.display = 'block';
+      toggleLogsBtn.textContent = 'Hide Logs';
+    } else {
+      logsDiv.style.display = 'none';
+      toggleLogsBtn.textContent = 'Show Logs';
+    }
+  };
+
+  exportCsvBtn.onclick = () => {
+    const lines = logsDiv.innerText.trim().split('\n');
+    if (lines.length === 0 || !logsDiv.innerText.trim()) {
+      alert('No logs to export!');
+      return;
+    }
+
+    const csvContent = ['Timestamp,Message'];
+    for (const line of lines) {
+      const match = line.match(/^\[(.*?)\] (.*)$/);
+      if (match) {
+        const [, timestamp, message] = match;
+        csvContent.push(`"${timestamp}","${message.replace(/"/g, '""')}"`);
       }
     }
 
-    if(resSpans.length > 0){
-      playChime(chimeType);
-      const htmlMsg = `<div style="margin-bottom:10px; font-weight:bold; font-size:14px;">⚠️ Resurse scăzute:</div>${resSpans.join('')}`;
-      notify(htmlMsg);
-      sendPushoverNotification(`⚠️ Resurse scăzute:\n${pushoverLines.join('\n')}`);
-    }
-
-    timeoutId = setTimeout(() => check(thresholds, idMap, chimeType), 2000);
-  }
-
-  const idMap = {
-    wood: 'premium_exchange_rate_wood',
-    stone: 'premium_exchange_rate_stone',
-    iron: 'premium_exchange_rate_iron'
+    const blob = new Blob([csvContent.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `premium_market_logs_${new Date().toISOString().replace(/[:.]/g, '-')}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 100);
   };
 
-  document.getElementById('th-start-btn').onclick = function(){
-    if(monitorActive){
-      container.querySelector('#th-msg').textContent = 'Monitoring is already running!';
-      return;
-    }
-    const w = parseInt(document.getElementById('th-wood').value);
-    const s = parseInt(document.getElementById('th-stone').value);
-    const i = parseInt(document.getElementById('th-iron').value);
-
-    if([w,s,i].some(v => isNaN(v) || v < 0)){
-      container.querySelector('#th-msg').textContent = 'Please enter valid positive numbers!';
-      return;
-    }
-
-    const chimeType = document.getElementById('chime-select').value;
-
-    container.querySelector('#th-msg').textContent = 'Monitoring started.';
-    monitorActive = true;
-    check({wood: w, stone: s, iron: i}, idMap, chimeType);
-  };
-
-  document.getElementById('th-close-btn').onclick = function(){
-    monitorActive = false;
-    if(timeoutId) clearTimeout(timeoutId);
-    container.remove();
-  };
+  logsDiv.style.display = 'none';
 })();
