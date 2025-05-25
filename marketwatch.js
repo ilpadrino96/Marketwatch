@@ -1,6 +1,22 @@
 (function(){
   if(document.getElementById('res-threshold-ui')) return;
 
+  // Pushover settings
+  const pushoverUserKey = 'uet9xuivey6rrfbga3uzt4s369yds6';
+  const pushoverApiToken = 'acuz192hbhu6wvg41scxtecyvw8kp3';
+
+  function sendPushoverNotification(message) {
+    fetch('https://api.pushover.net/1/messages.json', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: new URLSearchParams({
+        token: pushoverApiToken,
+        user: pushoverUserKey,
+        message: message
+      })
+    }).catch(error => console.error('Pushover error:', error));
+  }
+
   const container = document.createElement('div');
   container.id = 'res-threshold-ui';
   container.style = `
@@ -70,16 +86,23 @@
   function check(thresholds, idMap, chimeType){
     if(!monitorActive) return;
     const resSpans = [];
+    const pushoverLines = [];
+
     for(const r in thresholds){
       const val = getResourceValue(r, idMap);
       if(val !== null && val <= thresholds[r]){
         resSpans.push(`<span style="padding:0 10px 0 18px" class="res source ${r}">${val}</span>`);
+        pushoverLines.push(`${r}: ${val}`);
       }
     }
+
     if(resSpans.length > 0){
       playChime(chimeType);
-      notify(`<div style="margin-bottom:10px; font-weight:bold; font-size:14px;">⚠️ Resurse scăzute:</div>${resSpans.join('')}`);
+      const htmlMsg = `<div style="margin-bottom:10px; font-weight:bold; font-size:14px;">⚠️ Resurse scăzute:</div>${resSpans.join('')}`;
+      notify(htmlMsg);
+      sendPushoverNotification(`⚠️ Resurse scăzute:\n${pushoverLines.join('\n')}`);
     }
+
     timeoutId = setTimeout(() => check(thresholds, idMap, chimeType), 2000);
   }
 
