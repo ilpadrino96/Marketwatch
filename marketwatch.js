@@ -39,7 +39,20 @@
     <div id="pm_logs" style="margin-top:10px; max-height:150px; overflow-y:auto; background:#222; border:1px solid #444; border-radius:5px; padding:5px; font-family: monospace; font-size:12px; display:none; color:#ddd;"></div>
   `;
 
+  // Add status display
+const statusDisplay = document.createElement('div');
+statusDisplay.id = 'pm_status';
+statusDisplay.style.marginBottom = '10px';
+statusDisplay.style.textAlign = 'center';
+statusDisplay.style.fontWeight = 'bold';
+statusDisplay.style.color = '#0f0';
+statusDisplay.textContent = 'Monitor is OFF';
+container.insertBefore(statusDisplay, container.children[1]);
+
+
   document.body.appendChild(container);
+
+  
 
   // Create and insert Export CSV button
   const exportCsvBtn = document.createElement('button');
@@ -144,24 +157,29 @@
   }
 
   startBtn.onclick = () => {
-    if (monitorInterval) {
-      addLog('Monitor already running.');
-      return;
-    }
-    addLog('Monitor started.');
-    monitor();
-    monitorInterval = setInterval(monitor, 2500);
-  };
+  if (monitorInterval) {
+    addLog('Monitor already running.');
+    return;
+  }
+  addLog('Monitor started.');
+  statusDisplay.textContent = 'Monitor is RUNNING';
+  statusDisplay.style.color = '#0f0';
+  monitor();
+  monitorInterval = setInterval(monitor, 2500);
+};
 
-  stopBtn.onclick = () => {
-    if (monitorInterval) {
-      clearInterval(monitorInterval);
-      monitorInterval = null;
-      addLog('Monitor stopped.');
-    } else {
-      addLog('Monitor was not running.');
-    }
-  };
+stopBtn.onclick = () => {
+  if (monitorInterval) {
+    clearInterval(monitorInterval);
+    monitorInterval = null;
+    addLog('Monitor stopped.');
+    statusDisplay.textContent = 'Monitor is OFF';
+    statusDisplay.style.color = '#f00';
+  } else {
+    addLog('Monitor was not running.');
+  }
+};
+
 
   toggleLogsBtn.onclick = () => {
     if (logsDiv.style.display === 'none' || !logsDiv.style.display) {
