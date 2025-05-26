@@ -3,7 +3,7 @@
   window.premiumMarketMonitor = true;
 
   const pushoverUserKey = 'uet9xuivey6rrfbga3uzt4s369yds6';
-  const pushoverApiToken = 'acuz192hbhu6wvg41scxtecyvw8kp3';
+  const pushoverApiToken = 'a738p4osx4o5mnea6pbcadjfz3au3i';
 
   // UI container with dark style
   const container = document.createElement('div');
