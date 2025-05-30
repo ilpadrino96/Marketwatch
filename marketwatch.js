@@ -83,7 +83,8 @@
         user: pushoverUserKey,
         message: msg,
         title: 'Premium Market Alert',
-        sound: 'cashregister' // <-- add this line
+        sound: 'cashregister',
+        priority: '1'
       })
     });
     addLog('Info | Pushover sent: ' + msg);
