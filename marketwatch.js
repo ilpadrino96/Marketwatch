@@ -83,7 +83,7 @@
         user: pushoverUserKey,
         message: msg,
         title: 'Premium Market Alert',
-        sound: 'cashregister',
+        sound: 'coins',
         priority: '1'
       })
     });
