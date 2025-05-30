@@ -74,22 +74,24 @@
 
   // Pushover notification
   async function sendPushover(msg) {
-    try {
-      await fetch('https://api.pushover.net/1/messages.json', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: new URLSearchParams({
-          token: pushoverApiToken,
-          user: pushoverUserKey,
-          message: msg,
-          title: 'Premium Market Alert'
-        })
-      });
-      addLog('Info | Pushover sent: ' + msg);
-    } catch (err) {
-      addLog('Info | Pushover error: ' + err.message);
-    }
+  try {
+    await fetch('https://api.pushover.net/1/messages.json', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: new URLSearchParams({
+        token: pushoverApiToken,
+        user: pushoverUserKey,
+        message: msg,
+        title: 'Premium Market Alert',
+        sound: 'cashregister' // <-- add this line
+      })
+    });
+    addLog('Info | Pushover sent: ' + msg);
+  } catch (err) {
+    addLog('Info | Pushover error: ' + err.message);
   }
+}
+
 
   // Sound chime function
   function playChime(type) {
